@@ -11,7 +11,7 @@ def read_trajectory(file_path):
             traj_meas.append([float(data[1]), float(data[2]), float(data[3])])
             traj_gt.append([float(data[4]), float(data[5]), float(data[6])])
     
-    return traj_meas, traj_gt
+    return np.transpose(traj_meas), np.transpose(traj_gt)
 
 def read_camera(file_path):
     with open(file_path, 'r') as fid:
@@ -33,7 +33,17 @@ def readLandmarksGT(file_path):
         for line in fid:
             data = line.split()
             lan_gt.append([float(data[1]), float(data[2]), float(data[3])])
-    return lan_gt
+    return np.transpose(lan_gt)
+
+def readMeasurements(i):
+    i_str = '{:05d}'.format(i - 1)  # Convert i to a 5-digit string
+    file_path = f"./data/meas-{i_str}.dat"
+    with open(file_path,'r') as fid:
+        data = np.loadtxt(fid,usecols=(2,3,4),skiprows=3)
+    id_land = data[:,0]
+    measurements = data[:,1:]
+    return np.transpose(id_land),np.transpose(measurements)
+        
 
 def plot_odometry_and_gt_and_landgt(traj_meas, traj_gt,lan_gt):
     traj_meas = np.array(traj_meas)  
