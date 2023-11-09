@@ -1,23 +1,26 @@
 import matplotlib.pyplot as plt
 import numpy as np
 np.set_printoptions(suppress=True, precision=4)
-import data_utils
-import geom_utils
+import utils
 
 #LOAD DATA
-traj_meas,traj_gt=data_utils.read_trajectory('./data/trajectoy.dat');
+traj_meas,traj_gt=utils.read_trajectory('./data/trajectoy.dat');
 pose_dim = traj_meas.shape[0] #3
 num_poses = traj_meas.shape[1] #200
 
 #Convert the robot poses to an array of homogeneous matrices
 XR_guess = np.zeros((3, 3, num_poses))
 for i in range(num_poses):
-    XR_guess[:, :, i] = geom_utils.v2t(traj_meas[:, i])
+    XR_guess[:, :, i] = utils.v2t(traj_meas[:, i])
 #print(XR_guess[:,:,0])
 
-lan_gt=data_utils.readLandmarksGT('./data/world.dat'); 
+XR_true = np.zeros((3,3,num_poses))
+for i in range(num_poses):
+    XR_true[:,:,i] = utils.v2t(traj_gt[:,i])
 
-cam_mat, cam_trans, z_near, z_far, width, height=data_utils.read_camera("./data/camera.dat")
+lan_gt=utils.readLandmarksGT('./data/world.dat'); 
+
+K, cam_pose, z_near, z_far, img_width, img_height=utils.read_camera("./data/camera.dat")
 
 #POSE MEAS.
 Zr = np.zeros((3, 3, num_poses - 1))

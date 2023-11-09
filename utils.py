@@ -17,8 +17,8 @@ def read_camera(file_path):
     with open(file_path, 'r') as fid:
         lines = fid.readlines()
 
-    cam_mat = np.loadtxt(lines[1:3])  # Read camera matrix (3x3)
-    cam_trans = np.loadtxt(lines[5:8])  # Read camera transform (4x4)
+    cam_mat = np.loadtxt(lines[1:4])  # Read camera matrix (3x3)
+    cam_trans = np.loadtxt(lines[5:9])  # Read camera transform (4x4)
 
     z_near = float(lines[9].split(":")[1])  # Read z_near
     z_far = float(lines[10].split(":")[1])   # Read z_far
@@ -51,12 +51,15 @@ def plot_odometry_and_gt_and_landgt(traj_meas, traj_gt,lan_gt):
     lan_gt = np.array(lan_gt)
     ax = plt.figure().add_subplot(projection='3d')
     ax.plot(traj_meas[:, 0], traj_meas[:, 1],zs=0,zdir='z',label='Measurements')
-    #ax.legend()   
-    #bx = plt.figure().add_subplot(projection='3d')
     ax.plot(traj_gt[:, 0], traj_gt[:, 1],zs=0,zdir='z',label='Ground Truth')
-    #bx.legend()  
-    #cx = plt.figure().add_subplot(projection='3d')
-    #ax.plot(lan_gt[:,0],lan_gt[:,1],zs=0,zdir='y',label='Landmark GT')
     ax.legend()
     
     plt.show()
+    
+def v2t(v):
+    c = np.cos(v[2])
+    s = np.sin(v[2])
+    A = np.array([[c, -s, v[0]],
+                  [s,  c, v[1]],
+                  [0,  0, 1]])
+    return A
