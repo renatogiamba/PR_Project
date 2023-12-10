@@ -17,8 +17,8 @@ def read_camera(file_path):
     with open(file_path, 'r') as fid:
         lines = fid.readlines()
 
-    cam_mat = np.loadtxt(lines[1:3])  # Read camera matrix (3x3)
-    cam_trans = np.loadtxt(lines[5:8])  # Read camera transform (4x4)
+    cam_mat = np.loadtxt(lines[1:4])  # Read camera matrix (3x3)
+    cam_trans = np.loadtxt(lines[5:9])  # Read camera transform (4x4)
 
     z_near = float(lines[9].split(":")[1])  # Read z_near
     z_far = float(lines[10].split(":")[1])   # Read z_far
@@ -65,9 +65,9 @@ def v2t(v):
     return A
 
 def flatten_matrix_by_columns(M):
-    v = np.zeros(6)
-    v[:4] = M[:2, :2].reshape(4)
-    v[4:6] = M[:2, 2]
+    v = np.zeros([6,1])
+    v[:4] = M[:2, :2].reshape([4,1])
+    v[4:6] = M[:2, [2]]
     return v
 
 def rand_perturb(XR_guess: list, num_poses: int):
@@ -93,19 +93,18 @@ def convert_robot_gt(num_poses: int, traj_gt: list):
     return XR_true
     
 def import_poses(num_poses: int, XR_guess: list):
-    Zr = np.zeros((3, 3, num_poses - 1))
-    for measurement_num in range(num_poses - 1):
-       Xi = XR_guess[:, :, measurement_num]
-       Xj = XR_guess[:, :, measurement_num + 1]
-       Zr[:, :, measurement_num] = np.linalg.inv(Xi) @ Xj
+    Zr = np.zeros((3, 3, num_poses))
+    for measurement_num in range(num_poses):
+       Xi = XR_guess[:, :, (measurement_num-1)]
+       Xj = XR_guess[:, :, (measurement_num-1) + 1]
+       Zr[:, :, measurement_num] = np.dot(np.linalg.inv(Xi), Xj)
     return Zr
 
 def import_projections(num_poses: int, num_landmarks: int,):
     Zp = np.zeros([2,num_poses * num_landmarks])
     projection_associations = np.zeros([2, num_poses * num_landmarks])
-
     measurement_num = 0
-    for pose_num in range(1,num_poses+1):
+    for pose_num in range(1, num_poses+1):
         id_landmarks, measurements = readMeasurements(pose_num)
         for i in range(measurements.shape[1]):
             measurement_num += 1
