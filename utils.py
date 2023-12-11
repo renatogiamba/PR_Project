@@ -17,13 +17,13 @@ def read_camera(file_path):
     with open(file_path, 'r') as fid:
         lines = fid.readlines()
 
-    cam_mat = np.loadtxt(lines[1:4])  # Read camera matrix (3x3)
-    cam_trans = np.loadtxt(lines[5:9])  # Read camera transform (4x4)
+    cam_mat = np.loadtxt(lines[1:4])  
+    cam_trans = np.loadtxt(lines[5:9])  
 
-    z_near = float(lines[9].split(":")[1])  # Read z_near
-    z_far = float(lines[10].split(":")[1])   # Read z_far
-    width = float(lines[11].split(":")[1])   # Read width
-    height = float(lines[12].split(":")[1])  # Read height
+    z_near = float(lines[9].split(":")[1])  
+    z_far = float(lines[10].split(":")[1])   
+    width = float(lines[11].split(":")[1])   
+    height = float(lines[12].split(":")[1])  
 
     return cam_mat, cam_trans, z_near, z_far, width, height
 
@@ -36,7 +36,7 @@ def readLandmarksGT(file_path):
     return np.transpose(lan_gt)
 
 def readMeasurements(i):
-    i_str = '{:05d}'.format(i - 1)  # Convert i to a 5-digit string
+    i_str = '{:05d}'.format(i - 1)  
     file_path = f"./data/meas-{i_str}.dat"
     with open(file_path,'r') as fid:
         data = np.loadtxt(fid,usecols=(2,3,4),skiprows=3)

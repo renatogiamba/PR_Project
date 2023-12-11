@@ -1,8 +1,7 @@
 import numpy as np
 import utils 
 
-def box_plus(XR, XL, dx, num_poses, pose_dim, num_landmarks, landmark_dim):
-
+def box_plus(XR: list, XL: list, dx: list, num_poses, pose_dim, num_landmarks, landmark_dim):
     for pose_index in range(num_poses):
         pose_matrix_index = pose_index * pose_dim
         dxr = dx[pose_matrix_index:pose_matrix_index + pose_dim]
@@ -11,14 +10,13 @@ def box_plus(XR, XL, dx, num_poses, pose_dim, num_landmarks, landmark_dim):
     for landmark_index in range(num_landmarks):
         landmark_matrix_index = num_poses * pose_dim + landmark_index * landmark_dim
         dxl = dx[landmark_matrix_index:landmark_matrix_index + landmark_dim]
-        XL[:, landmark_index] += dxl
+        XL[:, [landmark_index]] += dxl
     return XR,XL
 
 R0 = np.array([[0, -1],
                [1,  0]],dtype=object)
 
-def pose_error_and_jacobian(Xi, Xj, Z):
-    
+def pose_error_and_jacobian(Xi: list, Xj: list, Z: list): 
     Ri = Xi[:2, :2]
     Rj = Xj[:2, :2]
     ti = Xi[:2, 2]
@@ -35,15 +33,14 @@ def pose_error_and_jacobian(Xi, Xj, Z):
 
     Z_hat = np.eye(3)
     Z_hat[:2, :2] = np.dot(Ri_transposed, Rj)
-    Z_hat[:2, 2] = np.dot(Ri_transposed, tij)
+    Z_hat[:2, [2]] = np.dot(Ri_transposed, tij).reshape([2,1])
     e = utils.flatten_matrix_by_columns(Z_hat - Z)
     return e, Ji, Jj
 
-def build_linear_system_poses(XR, XL, Zr, kernel_threshold, num_poses, pose_dim, num_landmarks, landmark_dim):
-     
+def build_linear_system_poses(XR: list, XL: list, Zr: list, kernel_threshold: int, num_poses, pose_dim, num_landmarks, landmark_dim):
     system_size = pose_dim * num_poses + landmark_dim * num_landmarks
-    H = np.zeros((system_size, system_size))
-    b = np.zeros((system_size))
+    H = np.zeros([system_size, system_size])
+    b = np.zeros([system_size,1])
     chi_tot = 0
     num_inliers = 0
 
@@ -51,8 +48,8 @@ def build_linear_system_poses(XR, XL, Zr, kernel_threshold, num_poses, pose_dim,
         Omega = np.eye(6)
         Omega[:3, :3] *= 1e3
         Z = Zr[:, :, measurement_num]
-        Xi = XR[:, :, measurement_num]
-        Xj = XR[:, :, measurement_num + 1]
+        Xi = XR[:, :, (measurement_num-1)]
+        Xj = XR[:, :, (measurement_num-1) + 1]
         e, Ji, Jj = pose_error_and_jacobian(Xi, Xj, Z)
         chi = np.dot(e.T, np.dot(Omega, e))
 
