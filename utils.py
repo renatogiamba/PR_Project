@@ -56,6 +56,30 @@ def plot_odometry_and_gt_and_landgt(traj_meas, traj_gt,lan_gt):
     
     plt.show()
     
+def getCameraPose(XR: list, cam_pose: float):
+    X_world = np.eye(4)
+    X_world[:2, :2] = XR[:2, :2]
+    X_world[:2, 3] = XR[:2, 2]
+    X_world = np.dot(X_world, cam_pose)
+    return X_world
+
+def directionFromImgCoordinates(img_coord, K):
+    invK = np.linalg.inv(K)
+    img_coord = np.pad(img_coord, (0,1), 'constant',constant_values=1)
+    d = np.dot(invK, img_coord)
+    d *= 1 / np.linalg.norm(d)
+    return d
+
+def getdirectionsfromlandmarkviews(poses, X_world, projections, K):
+    directions= []
+    points= []
+    for pose in range(poses.size):
+            points.append(X_world[:3, 3, int(poses[0][pose])-1])
+            R = X_world[:3, :3, int(poses[0][pose])-1]
+            directions.append(np.dot(R, directionFromImgCoordinates(projections[:, pose], K)))
+    return np.array(points).swapaxes(0,1), np.array(directions).swapaxes(0,1)
+    
+    
 def v2t(v):
     c = np.cos(v[2])
     s = np.sin(v[2])
@@ -113,7 +137,70 @@ def import_projections(num_poses: int, num_landmarks: int,):
 
     return projection_associations[:,0:measurement_num],Zp[:,0:measurement_num]
 
-def show_results(XR_true,XR_guess,XR,chi_stats_r,num_inliers_r,chi_stats_p,num_inliers_p):
+def triangulate(points, directions):
+    A = np.zeros((3, 3))
+    B = np.zeros((3, 1))
+    P = np.zeros((3, 1))
+    for i in range(len(points[1])):
+        a = directions[0, i]
+        b = directions[1, i]
+        c = directions[2, i]
+        x = points[0, i]
+        y = points[1, i]
+        z = points[2, i]
+        A[0, 0] += 1 - a*a
+        A[0, 1] += -a*b
+        A[0, 2] += -a*c
+        A[1, 1] += 1 - b*b
+        A[1, 2] += -b*c
+        A[2, 2] += 1 - c*c
+        B[0, 0] += (1 - a*a)*x - a*b*y - a*c*z
+        B[1, 0] += -a*b*x + (1 - b*b)*y - b*c*z
+        B[2, 0] += -a*c*x - b*c*y + (1 - c*c)*z
+    A[1, 0] = A[0, 1]
+    A[2, 0] = A[0, 2]
+    A[2, 1] = A[1, 2]
+    P = np.linalg.lstsq(A, B)[0]
+    return P
+
+def init_landmarks(XR_guess, Zp, projection_associations, id_landmarks, num_poses, num_landmarks, pose_dim, landmark_dim, K, cam_pose, z_far, z_near):
+    new_Zp = Zp.copy()
+    new_projection_associations = projection_associations.copy()
+    new_id_landmarks=[]
+    XL_guess = []
+
+    X_world = np.array([getCameraPose(XR_guess[:, :, i], cam_pose) for i in range(num_poses)]).transpose(1, 2, 0)
+        
+    new_num_landmarks = 0
+    for current_landmark in range(num_landmarks):
+        print(f"Landmark {current_landmark + 1} out of {num_landmarks}")
+        
+        idx = (projection_associations[1, :] == id_landmarks[current_landmark])
+        poses = projection_associations[0, idx].reshape([1,-1])
+        projections = Zp[:, idx]
+
+        if poses.size < 2:
+            new_Zp[:, idx] = np.array([['nan'], ['nan']], dtype=float)
+            new_projection_associations[:, idx] = np.array([['nan'], ['nan']], dtype=float)
+            continue
+        points, directions = getdirectionsfromlandmarkviews(poses,X_world,projections, K)
+        new_num_landmarks+= 1
+        XL_guess.append(triangulate(points, directions))
+        new_id_landmarks.append(id_landmarks[current_landmark])
+        new_projection_associations[1, idx] = new_num_landmarks
+        
+    filter_Zp = ~np.all(np.isnan(new_Zp), axis=0)
+    new_Zp = new_Zp[:, filter_Zp]
+    filter_associations = ~np.all(np.isnan(new_projection_associations), axis=0)
+    new_projection_associations = new_projection_associations[:, filter_associations]
+    XL_guess=np.array(XL_guess).swapaxes(0,1)
+    new_id_landmarks=np.array(new_id_landmarks)
+
+    print(f"The filtered landmarks are:{num_landmarks - new_num_landmarks}")
+
+    return XL_guess, new_Zp, new_projection_associations, new_id_landmarks
+
+def show_results(XR_true, XR_guess, XR, XL_true, XL_guess, XL, chi_stats_r, num_inliers_r, chi_stats_p, num_inliers_p):
     plt.figure(1)
     plt.figure().add_subplot()
     plt.plot(XR_true[0,:], XR_true[1,:],'o',color='b')
@@ -127,6 +214,20 @@ def show_results(XR_true,XR_guess,XR,chi_stats_r,num_inliers_r,chi_stats_p,num_i
     plt.show()
     
     plt.figure(3)
+    plt.figure().add_subplot()
+    ax = plt.axes(projection='3d')
+    ax.plot3D(XL_true[0,:], XL_true[1,:],XL_true[2,:],'b^')
+    ax.plot3D(XL_guess[0,:], XL_guess[1,:],XL_guess[2,:],'ro')
+    plt.show()
+    
+    plt.figure(4)
+    plt.figure().add_subplot()
+    ax = plt.axes(projection='3d')
+    ax.plot3D(XL_true[0,:], XL_true[1,:],XL_true[2,:],'b^')
+    ax.plot3D(XL[0,:], XL[1,:],XL[2,:],'ro')
+    plt.show()
+    
+    plt.figure(5)
     plt.subplot(2, 2, 1)
     plt.plot(chi_stats_r, 'r-', linewidth=2)
     plt.title("Chi Poses")
