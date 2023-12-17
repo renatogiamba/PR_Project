@@ -21,7 +21,7 @@ if __name__ == "__main__":
     )
     cli.add_argument(
         "--num_iterations", action="store",
-        default= 20, help="set the number of iterations to do in the least square"
+        default= 19, help="set the number of iterations to do in the least square"
     )
     
     args = cli.parse_args()
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     id_landmarks = np.unique(projection_associations[1,:])
     num_landmarks = len(id_landmarks)
     print(f"[Strating landmark initialization...]\n")
-    XL_guess,Zp,projection_associations,id_landmarks = utils.init_landmarks(XR_guess,Zp,projection_associations,id_landmarks, num_poses, num_landmarks, pose_dim, landmark_dim, K, cam_pose, z_far, z_near)
+    XL_guess,Zp,projection_associations,id_landmarks = utils.init_landmarks(XR_guess,Zp,projection_associations,id_landmarks, num_poses, num_landmarks, K, cam_pose)
     num_landmarks = len(id_landmarks)
     XL_guess=np.squeeze(XL_guess, axis=2)
     print(f"[Landmarks coorectly initialized]\n")
@@ -66,3 +66,4 @@ if __name__ == "__main__":
     print(f"[Least Square done]\n")
     
     utils.show_results(XR_true, XR_guess, XR, XL_true, XL_guess, XL, chi_stats_r,num_inliers_r,chi_stats_p,num_inliers_p)
+    utils.evaluate_poses(XR, XR_true)

@@ -2,6 +2,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def read_trajectory(file_path):
+    """
+        Read the trajectory datas: measurements and ground truth .
+
+        Parameters:
+        ===========
+        file_path (.dat): The input file containing datas.
+
+        Returns:
+        ========
+        (np.array): The output measuremets.
+        (np.array): The output ground truth.
+        """
     traj_meas = []
     traj_gt = []
     
@@ -14,20 +26,47 @@ def read_trajectory(file_path):
     return np.transpose(traj_meas), np.transpose(traj_gt)
 
 def read_camera(file_path):
+    """
+        Read the camera datas.
+
+        Parameters:
+        ===========
+        file_path (.dat): The input file containing datas.
+
+        Returns:
+        ========
+        (np.array): The output Camera matrix.
+        (np.array): The output Camera transform.
+        (float): The output z_near.
+        (float): The output z_far.
+        (float): The output width.
+        (float): The output height.
+        """
     with open(file_path, 'r') as fid:
         lines = fid.readlines()
 
-    cam_mat = np.loadtxt(lines[1:4])  
-    cam_trans = np.loadtxt(lines[5:9])  
+    K = np.loadtxt(lines[1:4])  
+    cam_pose = np.loadtxt(lines[5:9])  
 
     z_near = float(lines[9].split(":")[1])  
     z_far = float(lines[10].split(":")[1])   
     width = float(lines[11].split(":")[1])   
     height = float(lines[12].split(":")[1])  
 
-    return cam_mat, cam_trans, z_near, z_far, width, height
+    return K, cam_pose, z_near, z_far, width, height
 
 def readLandmarksGT(file_path):
+    """
+        Read the landmark true positions datas.
+
+        Parameters:
+        ===========
+        file_path (.dat): The input file containing datas.
+
+        Returns:
+        ========
+        (np.array): The output landmarks true positions.
+        """
     lan_gt = []
     with open(file_path, 'r') as fid:
         for line in fid:
@@ -36,6 +75,18 @@ def readLandmarksGT(file_path):
     return np.transpose(lan_gt)
 
 def readMeasurements(i):
+    """
+        Read the landmarks measurements.
+
+        Parameters:
+        ===========
+        file_path (.dat): The input file containing datas.
+
+        Returns:
+        ========
+        (np.array): The output landmarks ids.
+        (np.array): The output landmarks measurements.
+        """
     i_str = '{:05d}'.format(i - 1)  
     file_path = f"./data/meas-{i_str}.dat"
     with open(file_path,'r') as fid:
@@ -43,44 +94,67 @@ def readMeasurements(i):
     id_land = data[:,0]
     measurements = data[:,1:]
     return np.transpose(id_land),np.transpose(measurements)
-        
+    
+def getCameraPose(XR: list, cam_pose: list):
+    """
+        Convert poses in world coordinates.
 
-def plot_odometry_and_gt_and_landgt(traj_meas, traj_gt,lan_gt):
-    traj_meas = np.array(traj_meas)  
-    traj_gt = np.array(traj_gt)
-    lan_gt = np.array(lan_gt)
-    ax = plt.figure().add_subplot(projection='3d')
-    ax.plot(traj_meas[:, 0], traj_meas[:, 1],zs=0,zdir='z',label='Measurements')
-    ax.plot(traj_gt[:, 0], traj_gt[:, 1],zs=0,zdir='z',label='Ground Truth')
-    ax.legend()
-    
-    plt.show()
-    
-def getCameraPose(XR: list, cam_pose: float):
+        Parameters:
+        ===========
+        XR (list): The input file containing poses.
+        cam_pose(list): The input file containing the camera transform
+
+        Returns:
+        ========
+        (np.array): The output converted poses.
+        """
     X_world = np.eye(4)
     X_world[:2, :2] = XR[:2, :2]
     X_world[:2, 3] = XR[:2, 2]
     X_world = np.dot(X_world, cam_pose)
     return X_world
 
-def directionFromImgCoordinates(img_coord, K):
-    invK = np.linalg.inv(K)
-    img_coord = np.pad(img_coord, (0,1), 'constant',constant_values=1)
-    d = np.dot(invK, img_coord)
-    d *= 1 / np.linalg.norm(d)
-    return d
-
 def getdirectionsfromlandmarkviews(poses, X_world, projections, K):
+    """
+        Return directions and points from the views pointing at the current landmark pose.
+
+        Parameters:
+        ===========
+        poses (list): The landmarks poses.
+        X_world(list): The world coordinates of camera poses.
+        projections(list): The projections of the current landmark.
+        K(list): The camera matrix.
+
+        Returns:
+        ========
+        (np.array): The output camera centers.
+        (np.array): The output rays passing through the projections of the landmarks.
+        """
+    invK = np.linalg.inv(K)
     directions= []
     points= []
     for pose in range(poses.size):
             points.append(X_world[:3, 3, int(poses[0][pose])-1])
             R = X_world[:3, :3, int(poses[0][pose])-1]
-            directions.append(np.dot(R, directionFromImgCoordinates(projections[:, pose], K)))
+            view = np.pad(projections[:, pose], (0,1), 'constant',constant_values=1)
+            direction = np.dot(invK, view)
+            direction *= 1 / np.linalg.norm(direction)
+            directions.append(np.dot(R, direction))
     return np.array(points).swapaxes(0,1), np.array(directions).swapaxes(0,1)
     
     
 def v2t(v):
+    """
+        Computes the homogeneous transformation matrix of the pose vector v.
+
+        Parameters:
+        ===========
+        v (vector): The input pose vector.
+
+        Returns:
+        ========
+        (np.array): The output homogeneous transformation matrix.
+        """
     c = np.cos(v[2])
     s = np.sin(v[2])
     A = np.array([[c, -s, v[0]],
@@ -89,34 +163,71 @@ def v2t(v):
     return A
 
 def flatten_matrix_by_columns(M):
+    """
+        Computes the corresponding flattened matrix of the input matrix M.
+
+        Parameters:
+        ===========
+        M (matrix): The input matrix.
+
+        Returns:
+        ========
+        (np.array): The output flattened matrix.
+        """
     v = np.zeros([6,1])
     v[:4] = M[:2, :2].reshape([4,1])
     v[4:6] = M[:2, [2]]
     return v
 
-def rand_perturb(XR_guess: list, num_poses: int):
-    pert_deviation = 1
-    pert_scale = np.eye(3) * pert_deviation
-    for pose_num in range(2, num_poses):
-        xr = np.random.rand(3,1) - 0.5
-        dXr = v2t(np.dot(pert_scale, xr))
-        XR_guess[:, :, pose_num] = np.dot(dXr, XR_guess[:, :, pose_num])
-        
-    return XR_guess
-
 def convert_robot_poses(num_poses: int, traj_meas: list):
+    """
+        Computes the robot poses to an array of homogeneous matrices.
+
+        Parameters:
+        ===========
+        num_poses (int): The input number of poses.
+        traj_meas (list): The input trajectory measurements.
+
+        Returns:
+        ========
+        (np.array): The output array of homogeneous matrices.
+        """
     XR_guess = np.zeros((3, 3, num_poses))
     for i in range(num_poses):
         XR_guess[:, :, i] = v2t(traj_meas[:, i])
     return XR_guess
 
 def convert_robot_gt(num_poses: int, traj_gt: list):
+    """
+        Computes the robot poses to an array of homogeneous matrices.
+
+        Parameters:
+        ===========
+        num_poses (int): The input number of poses.
+        traj_gt (list): The input trajectory ground truth.
+
+        Returns:
+        ========
+        (np.array): The output array of homogeneous matrices.
+        """
     XR_true = np.zeros((3,3,num_poses))
     for i in range(num_poses):
         XR_true[:,:,i] = v2t(traj_gt[:,i])
     return XR_true
     
 def import_poses(num_poses: int, XR_guess: list):
+    """
+        Computes the pose-pose measurements.
+
+        Parameters:
+        ===========
+        num_poses (int): The input number of poses.
+        XR_guess (list): The input robot measurements array.
+
+        Returns:
+        ========
+        (np.array): The output array of pose-pose measurements.
+        """
     Zr = np.zeros((3, 3, num_poses))
     for measurement_num in range(num_poses):
        Xi = XR_guess[:, :, (measurement_num-1)]
@@ -125,6 +236,19 @@ def import_poses(num_poses: int, XR_guess: list):
     return Zr
 
 def import_projections(num_poses: int, num_landmarks: int,):
+    """
+        Computes the pose-landmark measurements and the associations.
+
+        Parameters:
+        ===========
+        num_poses (int): The input number of poses.
+        num_landmarks (list): The input number of landmarks.
+
+        Returns:
+        ========
+        (np.array): The output array of associations.
+        (np.array): The output array of pose-landmark measurements.
+        """
     Zp = np.zeros([2,num_poses * num_landmarks])
     projection_associations = np.zeros([2, num_poses * num_landmarks])
     measurement_num = 0
@@ -137,7 +261,19 @@ def import_projections(num_poses: int, num_landmarks: int,):
 
     return projection_associations[:,0:measurement_num],Zp[:,0:measurement_num]
 
-def triangulate(points, directions):
+def triangulate(points: list, directions: list):
+    """
+        Computes the pose-landmark measurements and the associations.
+
+        Parameters:
+        ===========
+        points (list): The input camera centers.
+        directions (list): The input rays passing through the projections of the landmarks.
+
+        Returns:
+        ========
+        (np.array): The output solution of the linear system.
+        """
     A = np.zeros((3, 3))
     B = np.zeros((3, 1))
     P = np.zeros((3, 1))
@@ -148,22 +284,43 @@ def triangulate(points, directions):
         x = points[0, i]
         y = points[1, i]
         z = points[2, i]
-        A[0, 0] += 1 - a*a
-        A[0, 1] += -a*b
-        A[0, 2] += -a*c
-        A[1, 1] += 1 - b*b
-        A[1, 2] += -b*c
-        A[2, 2] += 1 - c*c
-        B[0, 0] += (1 - a*a)*x - a*b*y - a*c*z
-        B[1, 0] += -a*b*x + (1 - b*b)*y - b*c*z
-        B[2, 0] += -a*c*x - b*c*y + (1 - c*c)*z
+        A[0, 0] += 1 - np.dot(a,a)
+        A[0, 1] += -np.dot(a,b)
+        A[0, 2] += -np.dot(a,c)
+        A[1, 1] += 1 - np.dot(b,b)
+        A[1, 2] += -np.dot(b,c)
+        A[2, 2] += 1 - np.dot(c,c)
+        B[0, 0] += np.dot((1 - np.dot(a,a)),x) - np.dot(np.dot(a,b),y) - np.dot(np.dot(a,c),z)
+        B[1, 0] += -np.dot(np.dot(a,b),x) + np.dot((1 - np.dot(b,b)),y) - np.dot(np.dot(b,c),z)
+        B[2, 0] += -np.dot(np.dot(a,c),x) - np.dot(np.dot(b,c),y) + np.dot((1 - np.dot(c,c)),z)
     A[1, 0] = A[0, 1]
     A[2, 0] = A[0, 2]
     A[2, 1] = A[1, 2]
     P = np.linalg.lstsq(A, B)[0]
     return P
 
-def init_landmarks(XR_guess, Zp, projection_associations, id_landmarks, num_poses, num_landmarks, pose_dim, landmark_dim, K, cam_pose, z_far, z_near):
+def init_landmarks(XR_guess, Zp, projection_associations, id_landmarks, num_poses, num_landmarks, K, cam_pose):
+    """
+        Computes landmarks positions and updates associations, number of landmarks and pose-landmarks array .
+
+        Parameters:
+        ===========
+        XR_guess (list): The input camera centers.
+        Zp (list): The input rays passing through the projections of the landmarks.
+        projections_associations (list): The input landmarks projections association array.
+        id_landmarks (list): The input landmarks ids array.
+        num_poses (int): The input number od robot poses.
+        num_landmarks (int): The input number of landmarks.
+        K (list): The input camera matrix.
+        cam_pose (list): The input camera transform.
+
+        Returns:
+        ========
+        (np.array): The output landmarks positions array.
+        (np.array): The output new pose-landmark array.
+        (np.array): The output new associations array.
+        (np.array): The output new landmarks ids array.
+        """
     new_Zp = Zp.copy()
     new_projection_associations = projection_associations.copy()
     new_id_landmarks=[]
@@ -183,7 +340,7 @@ def init_landmarks(XR_guess, Zp, projection_associations, id_landmarks, num_pose
             new_Zp[:, idx] = np.array([['nan'], ['nan']], dtype=float)
             new_projection_associations[:, idx] = np.array([['nan'], ['nan']], dtype=float)
             continue
-        points, directions = getdirectionsfromlandmarkviews(poses,X_world,projections, K)
+        points, directions = getdirectionsfromlandmarkviews(poses, X_world, projections, K)
         new_num_landmarks+= 1
         XL_guess.append(triangulate(points, directions))
         new_id_landmarks.append(id_landmarks[current_landmark])
@@ -200,55 +357,71 @@ def init_landmarks(XR_guess, Zp, projection_associations, id_landmarks, num_pose
 
     return XL_guess, new_Zp, new_projection_associations, new_id_landmarks
 
+def evaluate_poses(XR,XR_true):
+    """
+        Evaluation function.
+
+        Parameters:
+        ===========
+        XR (list): The input robot poses returned by least square.
+        XR_true (list): The input robot poses ground truth.
+
+        Returns:
+        ========
+        """
+    num_poses = XR.shape[2]
+
+    rotation_errors = []
+    translation_errors = []
+    
+    for i in range(num_poses - 1):  
+        rel_T = np.dot(np.linalg.inv(XR[:,:,i]), XR[:,:,i+1])
+        rel_GT = np.dot(np.linalg.inv(XR_true[:,:,i]), XR_true[:,:,i+1])
+        error_T = np.dot(np.linalg.inv(rel_T), rel_GT)
+    
+        rotation_error = np.arctan2(error_T[1, 0], error_T[0, 0])
+        translation_error = np.sqrt(np.mean(error_T[0:2, 2]**2))
+    
+        rotation_errors.append(rotation_error)
+        translation_errors.append(translation_error)
+    
+    avg_rotation_error = np.mean(rotation_errors)
+    avg_translation_error = np.mean(translation_errors)
+    
+    print("Average Rotation Error (in radians):", avg_rotation_error)
+    print("Average Translation RMSE Error:", avg_translation_error)
+    
 def show_results(XR_true, XR_guess, XR, XL_true, XL_guess, XL, chi_stats_r, num_inliers_r, chi_stats_p, num_inliers_p):
-    plt.figure(1)
-    plt.figure().add_subplot()
-    plt.plot(XR_true[0,:], XR_true[1,:],'o',color='b')
-    plt.plot(XR_guess[0,:], XR_guess[1,:],'x',color='r')
-    plt.show()
+    fig1 = plt.figure(1)
+    fig1.set_size_inches(12, 8)
+    fig1.suptitle("Landmark and Poses", fontsize=16)
     
-    plt.figure(2)
-    plt.figure().add_subplot()
-    plt.plot(XR_true[0, :], XR_true[1, :],'o',color='b')
-    plt.plot(XR[0,:], XR[1,:],'x',color='r')
-    plt.show()
+    ax3 = fig1.add_subplot(221)
+    ax3.plot(XR_true[0,:],XR_true[1,:], 'o', mfc='none', color='b', markersize=3)
+    ax3.plot(XR_guess[0,:],XR_guess[1,:], 'x', color='r', markersize=3)
+    ax3.axis([-10,10,-10,10])
+    ax3.set_title("Robot ground truth and odometry values", fontsize=10)
     
-    plt.figure(3)
-    plt.figure().add_subplot()
-    ax = plt.axes(projection='3d')
-    ax.plot3D(XL_true[0,:], XL_true[1,:],XL_true[2,:],'b^')
-    ax.plot3D(XL_guess[0,:], XL_guess[1,:],XL_guess[2,:],'ro')
-    plt.show()
+    ax4 = fig1.add_subplot(222)
+    ax4.plot(XR_true[0,:],XR_true[1,:], 'o', mfc='none', color='b', markersize=3)
+    ax4.plot(XR[0,:],XR[1,:], 'x', color='r', markersize=3)
+    ax4.axis([-10,10,-10,10])
+    ax4.set_title("Robot ground truth and optimization", fontsize=10)
     
-    plt.figure(4)
-    plt.figure().add_subplot()
-    ax = plt.axes(projection='3d')
-    ax.plot3D(XL_true[0,:], XL_true[1,:],XL_true[2,:],'b^')
-    ax.plot3D(XL[0,:], XL[1,:],XL[2,:],'ro')
-    plt.show()
+    fig3 = plt.figure(3)
+    fig3.set_size_inches(12, 6)
+    fig3.suptitle("Landmarks (without outliers)", fontsize=16)
     
-    plt.figure(5)
-    plt.subplot(2, 2, 1)
-    plt.plot(chi_stats_r, 'r-', linewidth=2)
-    plt.title("Chi Poses")
-    plt.grid(True)
-    plt.xlabel("Iterations")
-    plt.subplot(2, 2, 2)
-    plt.plot(num_inliers_r, 'b-', linewidth=2)
-    plt.title("# Inliers")
-    plt.grid(True)
-    plt.xlabel("Iterations")
-    plt.tight_layout()
+    ax7 = fig3.add_subplot(121)
+    ax7.plot(XL_true[0,:],XL_true[1,:], 'o', mfc='none', color='b', markersize=3)
+    ax7.plot(XL_guess[0, :], XL_guess[1, :], 'x', color='r', markersize=3)
+    ax7.set_title("Landmark ground truth and triangulation", fontsize=10)
+    ax7.axis([-15,15,-15,15])
     
-    plt.subplot(2, 2, 3)
-    plt.plot(chi_stats_p, 'r-', linewidth=2)
-    plt.title("Chi Proj")
-    plt.grid(True)
-    plt.xlabel("Iterations")
-    plt.subplot(2, 2, 4)
-    plt.plot(num_inliers_p, 'b-', linewidth=2)
-    plt.title("# Inliers")
-    plt.grid(True)
-    plt.xlabel("Iterations")
-    plt.tight_layout()
+    ax8 = fig3.add_subplot(122)
+    ax8.plot(XL_true[0,:],XL_true[1,:], 'o', mfc='none', color='b', markersize=3)
+    ax8.plot(XL[0,:],XL[1,:], 'x', color='r', markersize=3)
+    ax8.axis([-15,15,-15,15])
+    ax8.set_title("Landmark ground truth and optimization", fontsize=10)
+    
     plt.show()
