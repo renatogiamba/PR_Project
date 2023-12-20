@@ -1,7 +1,7 @@
 import numpy as np
 import utils 
 
-def box_plus(XR: list, XL: list, dx: list, num_poses, pose_dim, num_landmarks, landmark_dim):
+def box_plus(XR: list, XL: list, dx: list, num_poses: int, pose_dim: int, num_landmarks: int, landmark_dim: int):
     for pose_index in range(num_poses):
         pose_matrix_index = pose_index * pose_dim
         dxr = dx[pose_matrix_index:pose_matrix_index + pose_dim]
@@ -37,7 +37,7 @@ def pose_error_and_jacobian(Xi: list, Xj: list, Z: list):
     e = utils.flatten_matrix_by_columns(Z_hat - Z)
     return e, Ji, Jj
 
-def build_linear_system_poses(XR: list, XL: list, Zr: list, kernel_threshold: int, num_poses, pose_dim, num_landmarks, landmark_dim):
+def build_linear_system_poses(XR: list, XL: list, Zr: list, kernel_threshold: int, num_poses: int, pose_dim: int, num_landmarks: int, landmark_dim: int):
     system_size = pose_dim * num_poses + landmark_dim * num_landmarks
     H = np.zeros([system_size, system_size])
     b = np.zeros([system_size,1])

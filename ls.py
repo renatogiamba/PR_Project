@@ -3,7 +3,7 @@ import utils
 import poses
 import projections
 
-def total_ls(XR, XL, Zp, projection_associations, Zr, num_iterations, damping, kernel_threshold, num_poses, pose_dim, num_landmarks, landmark_dim, K, cam_pose, z_near, image_rows, image_cols):
+def total_ls(XR: list, XL: list, Zp: list, projection_associations: list, Zr: list, num_iterations: int, damping: int, kernel_threshold: float, num_poses: int, pose_dim: int, num_landmarks: int, landmark_dim: int, K: list, cam_pose: list, z_near: int, image_rows: int, image_cols: int):
     chi_stats_p = np.zeros(num_iterations)
     num_inliers_p = np.zeros(num_iterations)
     chi_stats_r = np.zeros(num_iterations)
@@ -45,7 +45,7 @@ def total_ls(XR, XL, Zp, projection_associations, Zr, num_iterations, damping, k
 
     return XR,XL,chi_stats_p,num_inliers_p,chi_stats_r,num_inliers_r,H,b
 
-def ls_warmup(XR, XL, Zp, projection_associations, Zr, num_iterations, damping, kernel_threshold, num_poses, pose_dim, num_landmarks, landmark_dim, K, cam_pose, z_near, image_rows, image_cols):
+def ls_warmup(XR: list, XL: list, Zp: list, projection_associations: list, Zr: list, num_iterations: int, damping: int, kernel_threshold: float, num_poses: int, pose_dim: int, num_landmarks: int, landmark_dim: int, K: list, cam_pose: list, z_near: int, image_rows: int, image_cols: int):
     chi_stats_p = np.zeros(num_iterations)
     num_inliers_p = np.zeros(num_iterations)
     chi_stats_r = np.zeros(num_iterations)

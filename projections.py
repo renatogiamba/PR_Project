@@ -1,7 +1,7 @@
 import numpy as np
 import utils
 
-def projectionErrorAndJacobian(Xr, Xl, z, K, cam_pose, z_near, image_rows, image_cols):
+def projectionErrorAndJacobian(Xr: list, Xl: list, z: list, K: list, cam_pose: list, z_near: int, image_rows: int, image_cols: int):
     is_valid = False
     e = np.array([[0],[0]])
     Jr = np.zeros([2, 3])
@@ -42,7 +42,7 @@ def projectionErrorAndJacobian(Xr, Xl, z, K, cam_pose, z_near, image_rows, image
 
     return is_valid, e, Jr, Jl
 
-def buildLinearSystemProjections(XR: list, XL: list, Zp: list, associations: list, kernel_threshold: int, num_poses, pose_dim, num_landmarks, landmark_dim, K, cam_pose, z_near, image_rows, image_cols):
+def buildLinearSystemProjections(XR: list, XL: list, Zp: list, associations: list, kernel_threshold: int, num_poses: int, pose_dim: int, num_landmarks: int, landmark_dim: int, K: list, cam_pose: list, z_near: int, image_rows: int, image_cols: int):
     system_size = pose_dim * num_poses + landmark_dim * num_landmarks
     H = np.zeros([system_size, system_size])
     b = np.zeros([system_size,1])
