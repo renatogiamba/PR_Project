@@ -13,5 +13,5 @@ Output:
 ![map](./Results/landmarks.PNG)
 
 RMSE evaluation:
-Average Rotation Error (in radians): 2.6588369590718163e-06
-Average Translation RMSE Error: 0.0010080680581410924
+* Average Rotation Error (in radians): 2.6588369590718163e-06
+* Average Translation RMSE Error: 0.0010080680581410924
