@@ -9,8 +9,8 @@ The proposed solution can be subdivided in three fases:
 * Get the final trajectory by running a total least square both on landmarks and robot poses.
 
 Output:
-![trajectory](./Results/trajectory.PNG)
-![map](./Results/landmarks.PNG)
+![trajectory](./output/trajectory.PNG)
+![map](./output/landmarks.PNG)
 
 RMSE evaluation:
 * Average Rotation Error (in radians): 2.6588369590718163e-06
