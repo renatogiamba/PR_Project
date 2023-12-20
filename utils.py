@@ -235,7 +235,7 @@ def import_poses(num_poses: int, XR_guess: list):
        Zr[:, :, measurement_num] = np.dot(np.linalg.inv(Xi), Xj)
     return Zr
 
-def import_projections(num_poses: int, num_landmarks: int,):
+def import_projections(num_poses: int, num_landmarks: int):
     """
         Computes the pose-landmark measurements and the associations.
 

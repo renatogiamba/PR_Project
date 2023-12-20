@@ -32,10 +32,6 @@ def total_ls(XR, XL, Zp, projection_associations, Zr, num_iterations, damping, k
         num_inliers_r[iteration] = num_inliers
         H += H_poses
         b += b_poses
-    
-
-        #print(chi_stats_r)
-        #print(num_inliers_r)
 
         H += np.eye(system_size) * damping
         dx = np.zeros([system_size,1])
